@@ -1,4 +1,4 @@
-# linux-backup
+# linux-snapshot
 
 Make snapshot backups using `rsync`.
 
