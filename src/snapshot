@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 
-PREFIX=/home/dimitar/tmp
-SOURCE=$PREFIX/srcdir/
-DESTINATION=$PREFIX/dstdir
+LATEST_MARK=latest
 
 make_backup_options() {
-    local link_dest, exclude_from
-    local "${@}"
+    local link_dest=${1:?expecting link_dest}
+    local exclude_from=${2}
 
     local -a options
     options+=( --archive )
@@ -16,10 +14,7 @@ make_backup_options() {
     options+=( --progress )
     options+=( --verbose )
     options+=( --mkpath )
-
-    if [[ ! -z $link_dest ]]; then
-        options+=( --link-dest $link_dest )
-    fi
+    options+=( --link-dest $link_dest )
 
     if [[ ! -z $exclude_from ]]; then
         options+=( --exclude-from $exclude_from )
@@ -36,12 +31,50 @@ link_last() {
     ln --symbolic --force --no-dereference $1 $2
 }
 
-snapshot=$DESTINATION/$(make_backup_name)
-options=$(make_backup_options link_dest=$DESTINATION/last)
-rsync $options $SOURCE $snapshot
+user=${USER}
+host=localhost
+src=
+dst=
+exclude_from=
+is_local=true
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -u|--user) user="$2"; shift;;
+        -h|--host) host="$2"; shift;;
+        -s|--src) src="$2"; shift;;
+        -d|--dst) dst="${2%/}"; shift;;
+        -e|--exclude_from) exclude_from="$2"; shift;;
+        --is_local) is_local=true; shift;;
+        --is_remote) is_local=false; shift;;
+        *) echo "Unknown option $1"; exit 1;;
+    esac
+    shift
+done
+
+make_snapshot_dst() {
+    local is_local="${1:?missing control variable for snapshot loacllity target}"
+    local dst="${2:?missing destination path}/$(make_backup_name)"
+
+    if [[ $is_local == true ]]; then
+        echo $dst
+        return
+    fi
+
+    local user="${3:?missing remote user name}"
+    local host="${4:?missing remote host}"
+    echo "$user@$host:$dst"
+}
+
+echo $(make_snapshot_dst $is_local $dst/$(basename $src) $user $host)
+exit 1
+
+snapshot=$snapshot_dst/$(make_backup_name)
+options=$(make_backup_options $snapshot_dst/$LATEST_MARK $exclude_from)
+rsync $options $snapshot_src $snapshot_dst
 case $? in
     0)
-        link_last $snapshot  $DESTINATION/last
+        link_last $snapshot $snapshot_dst/$LATEST_MARK
         notify-send "$0 success"
         ;;
     *)
