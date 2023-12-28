@@ -1,18 +1,19 @@
 # linux-snapshot
 
-Make snapshot backups using `rsync`.
+Make snapshot backups using `rsync` into remote server.
 
 ## Installation
 
 ### Requirements
 
 - `rsync`
+- `sshpass`
 
 ### Install
 
 ```
-git clone --depth 1 https://github.com/dpopchev/linux-backup
-cd linux-backup
+git clone --depth 1 https://github.com/dpopchev/linux-snapshot
+cd linux-snapshot
 make install
 ```
 
@@ -20,32 +21,34 @@ make install
 
 ### Setup
 
+#### User wide available
+
 Add `~/.dpopchev` in your `PATH`, e.g.
 
 ```
 PATH="~/.dpopchev/:$PATH"
 ```
 
-### Backup snapshot
+### Make snapshot
+
+To create a snapshot backup of `targetdir` into `destination` just do
 
 ```
-backup srcdir dstdir
+snapshot targetdir destinaton
 ```
 
-#### Hardlink unchanged files
+After execution in `destination` you will find:
 
-Argument for the `link-dest` option.
-
-```
-backup srcdir dstdir link_dest=dstdir/latest
-```
+- snapshot of `targetdir` named after time of execution, i.e. `YYYY-MM-DD-H-M-S`
+- `latest` pointing to the most recent backup
+- unchanged files in between snapshots are hard link copies
 
 #### Exclude
 
-Argument for the `exclude_from` option.
+Third argument can be a file with exclusion list
 
 ```
-backu srcdir dstdir exclude_from=exclude_list
+snapshot targetdir -l destinaton -e exclude_list -h loaclhost -u user
 ```
 
 Sample exclusion of directories and files content:
@@ -58,3 +61,8 @@ Sample exclusion of directories and files content:
 /home/user/.npm
 /home/user/.cache
 ```
+
+## Acknowledgment
+
+- [arch wiki](https://wiki.archlinux.org/title/rsync)
+- [gentoo wiki](https://wiki.gentoo.org/wiki/Rsync)
