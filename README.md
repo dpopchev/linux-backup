@@ -43,12 +43,12 @@ After execution in `destination` you will find:
 - `latest` pointing to the most recent backup
 - unchanged files in between snapshots are hard link copies
 
+In the directory of execution you will see logfile.
+
 #### Exclude
 
-Third argument can be a file with exclusion list
-
 ```
-snapshot targetdir -l destinaton -e exclude_list -h loaclhost -u user
+snapshot targetdir -l destinaton -e exclude_list
 ```
 
 Sample exclusion of directories and files content:
@@ -61,6 +61,10 @@ Sample exclusion of directories and files content:
 /home/user/.npm
 /home/user/.cache
 ```
+
+### Help
+
+Execute without arguments to see latest description.
 
 ## Acknowledgment
 
