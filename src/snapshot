@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
-LATEST_MARK=latest
+LATEST_MARK="latest"
+SCRIPT_NAME="$0"
 
-make_backup_options() {
-    local link_dest=${1:?expecting link_dest}
-    local exclude_from=${2}
+make_rsync_options() {
+    local link_dest=${1:?expecting link_dest}; shift;
+    local exclude_from is_dry_run
+    local "$@"
 
     local -a options
     options+=( --archive )
@@ -20,10 +22,14 @@ make_backup_options() {
         options+=( --exclude-from $exclude_from )
     fi
 
+    if [[ ! -z $is_dry_run ]]; then
+        options+=( --dry-run )
+    fi
+
     echo "${options[@]}"
 }
 
-make_backup_name() {
+make_snapshot_name() {
     echo $(date +%Y-%m-%d-%H-%M-%S)
 }
 
@@ -31,30 +37,23 @@ link_last() {
     ln --symbolic --force --no-dereference $1 $2
 }
 
-user=${USER}
-host=localhost
-src=
-dst=
-exclude_from=
-is_local=true
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -u|--user) user="$2"; shift;;
-        -h|--host) host="$2"; shift;;
-        -s|--src) src="$2"; shift;;
-        -d|--dst) dst="${2%/}"; shift;;
-        -e|--exclude_from) exclude_from="$2"; shift;;
-        --is_local) is_local=true; shift;;
-        --is_remote) is_local=false; shift;;
-        *) echo "Unknown option $1"; exit 1;;
-    esac
-    shift
-done
+usage() {
+    cat << HELPMSG
+$SCRIPT_NAME [OPTIONS]
+-u/--ruser: remote user, defautl is the <USER> env variable
+-h/--rhost: remote host name, default is localhost
+-s/--src: the directory/file to make snapshot backup
+-d/--dst_prefix: destination path prefix
+-e/--exclude_from: pass list of exclusions to rsync as a file
+--is_local: make a local snapshot, ruser and rhost not will ignored even when passed
+--is_remote: make snapshot on remote server, ruser and rhost are needed
+--is_dry_run: rsync trial run
+HELPMSG
+}
 
 make_snapshot_dst() {
     local is_local="${1:?missing control variable for snapshot loacllity target}"
-    local dst="${2:?missing destination path}/$(make_backup_name)"
+    local dst="${2:?missing destination path}/$(make_snapshot_name)"
 
     if [[ $is_local == true ]]; then
         echo $dst
@@ -66,18 +65,53 @@ make_snapshot_dst() {
     echo "$user@$host:$dst"
 }
 
-echo $(make_snapshot_dst $is_local $dst/$(basename $src) $user $host)
-exit 1
+notify_exit_status() {
+    local exitcode=$1
 
-snapshot=$snapshot_dst/$(make_backup_name)
-options=$(make_backup_options $snapshot_dst/$LATEST_MARK $exclude_from)
-rsync $options $snapshot_src $snapshot_dst
-case $? in
-    0)
-        link_last $snapshot $snapshot_dst/$LATEST_MARK
-        notify-send "$0 success"
-        ;;
-    *)
-        notify-send "$0 failed; $?"
-        ;;
-esac
+    case $exitcode in
+        0)
+            notify-send "$0 success"
+            ;;
+        *)
+            notify-send "$0 failed with status code $exitcode"
+            ;;
+    esac
+}
+
+main() {
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 1
+    fi
+
+    local user=${USER}
+    local host='localhost'
+    local target dst_prefix exclude_from is_dry_run
+    local is_local="true"
+
+    while [[ $# -gt 0 ]]; do
+        echo $@
+        case "$1" in
+            -u|--ruser) user="$2"; shift;;
+            -h|--rhost) host="$2"; shift;;
+            -s|--src) src="$2"; shift;;
+            -d|--dst) dst_prefix="${2%/}"; shift;;
+            -e|--exclude_from) exclude_from="$2"; shift;;
+            --is_local) is_local=true;;
+            --is_remote) is_local=false;;
+            --is_dry_run) is_dry_run=true;;
+            *) echo "Unknown option $1"; exit 1;;
+        esac
+        shift
+    done
+
+    local dst=$dst_prefix/$(basename $src)
+    local snapshot_dst=$(make_snapshot_dst $is_local $dst $user $host)
+    local options=$(make_rsync_options $dst/$LATEST_MARK is_dry_run=$is_dry_run exclude_from=$exclude_from)
+    rsync $options  $src $snapshot_dst
+    notify_exit_status $?
+    # link_last $snapshot $snapshot_dst/$LATEST_MARK
+}
+
+main "$@"
+exit 0
