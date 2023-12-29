@@ -4,6 +4,21 @@ LATEST_MARK="latest"
 SCRIPT_NAME="$0"
 LOGFILE="$SCRIPT_NAME.log"
 
+usage() {
+    cat << HELPMSG
+$SCRIPT_NAME [OPTIONS]
+-u/--ruser: remote user, defautl is the <USER> env variable
+-h/--rhost: remote host name, default is localhost
+-s/--src: the directory/file to make snapshot backup
+-d/--dst-prefix: destination path prefix
+-e/--exclude_from: pass list of exclusions to rsync as a file
+--is-local: make a local snapshot, ruser and rhost not will ignored even when passed
+--is-remote: make snapshot on remote server, ruser and rhost are needed
+--is-dry-run: rsync trial run
+-p/--passfile: passfile to use for connecting to host trough sshpass
+HELPMSG
+}
+
 make_rsync_options() {
     local link_dest=${1:?expecting link_dest}; shift;
     local exclude_from is_dry_run is_remote
@@ -38,21 +53,6 @@ make_rsync_options() {
 
 make_snapshot_name() {
     echo $(date +%Y-%m-%d-%H-%M-%S)
-}
-
-usage() {
-    cat << HELPMSG
-$SCRIPT_NAME [OPTIONS]
--u/--ruser: remote user, defautl is the <USER> env variable
--h/--rhost: remote host name, default is localhost
--s/--src: the directory/file to make snapshot backup
--d/--dst-prefix: destination path prefix
--e/--exclude_from: pass list of exclusions to rsync as a file
---is-local: make a local snapshot, ruser and rhost not will ignored even when passed
---is-remote: make snapshot on remote server, ruser and rhost are needed
---is-dry-run: rsync trial run
--p/--passfile: passfile to use for connecting to host trough sshpass
-HELPMSG
 }
 
 make_snapshot_dst() {
