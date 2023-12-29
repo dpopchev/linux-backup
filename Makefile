@@ -17,73 +17,94 @@ FORCE:
 inspect-%: FORCE
 	@echo $($*)
 
+# justify stdout log message using current screen size
+# right padding is 1; status length is fixed to 4
+TERM ?=
+done := done
+fail := fail
+info := info
+
 define log
-	printf "%-60s %20s \n" $(1) $(2)
-endef
-
-define add_gitignore
-	echo $(1) >> .gitignore;
-	sort --unique --output .gitignore{,};
-endef
-
-define del_gitignore
-	if [ -e .gitignore ]; then \
-		sed --in-place '\,$(1),d' .gitignore;\
-		sort --unique --output .gitignore{,};\
+if [ ! -z "$(TERM)" ]; then \
+	printf "%-$$(($$(tput cols) - 7))s[%-4s]\n" $(1) $(2);\
+	else \
+	printf "%-73s[%4s] \n" $(1) $(2);\
 	fi
 endef
 
-backup_suffix := dpopchevbak
-define backup_config
-	if [ -e "$(1)" ]; then \
-		mv --force --no-target-directory --backup=numbered \
-		"$(1)" "$(1).$(backup_suffix)";\
+define add_gitignore
+echo $(1) >> .gitignore;
+sort --unique --output .gitignore{,};
+endef
+
+define del_gitignore
+if [ -e .gitignore ]; then \
+	sed --in-place '\,$(1),d' .gitignore;\
+	sort --unique --output .gitignore{,};\
 	fi
 endef
 
 stamp_dir := .stamps
-src_dir := src
-
-configs := dpopchev
-config_dsts := $(addprefix ${HOME}/.,$(configs))
-config_stamps := $(addprefix $(stamp_dir)/,$(addsuffix .stamp,$(configs)))
 
 $(stamp_dir):
 	@$(call add_gitignore,$@)
-	@mkdir --parents $@
-	@$(call log,'create $@','[done]')
+	@mkdir -p $@
 
-$(config_stamps): $(stamp_dir)/%.stamp: | $(stamp_dir)
-	@$(call backup_config,$(filter %$*,$(config_dsts)))
-	@ln -s $(realpath $(src_dir)/$(filter %$*,$(configs))) $(filter %$*,$(config_dsts))
+src_dir := src
+tests_dir := tests
+build_dir := build
+
+$(src_dir) $(tests_dir):
+	@mkdir -p $@
+
+$(build_dir):
+	@mkdir -p $@
+	@$(call add_gitignore,$@/)
+
+.PHONY: clean-stampdir
+clean-stampdir:
+	@rm -rf $(stamp_dir)
+	@$(call del_gitignore,$(stamp_dir))
+
+.PHONY: build-object ### recipe building object
+build-object: build/build.o
+
+build/build.o: | $(build_dir)
 	@touch $@
-	@$(call log,'install $*','[done]')
+	@$(call log,'built object: $(notdir $@)',$(done))
 
-install_config_targets := $(addprefix install-,$(configs))
-.PHONY: $(install_config_targets)
-$(install_config_targets): install-%: $(stamp_dir)/%.stamp
+.PHONY: clean-build ###
+clean-build:
+	@rm -rf $(build_dir)
+	@$(call del_gitignore,$(build_dir))
+	@$(call log,'$@',$(done))
 
-.PHONY: install
-install: $(install_config_targets)
+.PHONY: build-stamped ### recipe using stamp idiom
+build-stamped: $(stamp_dir)/stamped.stamp
 
-uninstall_config_targets := $(addprefix uninstall-,$(configs))
-.PHONY: $(uninstall_config_targets)
-$(uninstall_config_targets): uninstall-%:
-	@rm --force $(filter %$*,$(config_dsts))
-	@if [ -e $(filter %$*,$(config_dsts)).$(backup_suffix) ]; then \
-		mv --force $(filter %$*,$(config_dsts)).$(backup_suffix) $(filter %$*,$(config_dsts));\
+$(stamp_dir)/stamped.stamp: | $(stamp_dir)
+	@touch $@
+	@$(call log,'making a build using stamp idiom',$(done))
+
+.PHONY: recipe ### recipe depending on stamped built
+recipe:
+	@if [ ! -e $(stamp_dir)/stamped.stamp ]; then \
+		echo 'Required build-stamped recipe not executed yet';\
+		echo 'do: make build-stamped first';\
+		false;\
 	fi
-	@if [ -e $(filter %$*,$(config_dsts)) ]; then \
-		$(call log,'restore config $*','[done]');\
-	fi
-	@if [ ! -e $(filter %$*,$(config_dsts)) ]; then \
-		$(call log,'restore config $*; inspect localtion manually','[fail]');\
-	fi
-	@rm --force $(stamp_dir)/$*.stamp
+	@$(call log,'recipe execution',$(done))
 
-.PHONY: uninstall
-uninstall: $(uninstall_config_targets)
+module ?= module
+args ?= ''
+.PHONY: run ### run <module>, pass <args>
+run:
+ifeq ($(module),module)
+	@echo 'run with $(module) using $(args)'
+else
+	@echo 'run with $(module) using $(args)'
+endif
 
-.PHONY: clean
-clean:
-	@rm --recursive --force $(stamp_dir)
+.PHONY: clean ###
+clean: clean-build
+	@rm -rf $(stamp_dir)
