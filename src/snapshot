@@ -112,6 +112,8 @@ make_snapshot() {
     ${rsync_cmd[@]} \
         | sed '/^$/Q' \
         | while read status; do notify-send "$status"; done
+
+    return $?
 }
 
 make_last_link() {
@@ -157,6 +159,12 @@ main() {
         esac
         shift
     done
+
+    if [[ $is_remote == true ]]; then
+        [[ -z $user ]] && echo 'missing user' && exit 1
+        [[ -z $host ]] && echo 'missing host' && exit 1
+        [[ ! -e $passfile ]] && echo 'missing passfile' && exit 1
+    fi
 
     local snapshots=$dst_prefix/$(basename $src)
     local snapshot_name=$(make_snapshot_name)

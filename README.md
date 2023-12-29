@@ -34,7 +34,7 @@ PATH="~/.dpopchev/:$PATH"
 To create a snapshot backup of `targetdir` into `destination` just do
 
 ```
-snapshot targetdir destinaton
+snapshot -s targetdir -d destinaton
 ```
 
 After execution in `destination` you will find:
