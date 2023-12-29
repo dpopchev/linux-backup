@@ -58,55 +58,21 @@ clean-stampdir:
 	@$(call del_gitignore,$(stamp_dir))
 
 src_dir := src
-tests_dir := tests
-build_dir := build
+dpopchev_dir := ~/.dpopchev
+script_name := snapshot
+script_src := $(src_dir)/$(script_name)
+script_dst := $(dpopchev_dir)/$(script_name)
 
-$(src_dir) $(tests_dir):
+$(dpopchev_dir):
 	@mkdir -p $@
 
-$(build_dir):
-	@mkdir -p $@
-	@$(call add_gitignore,$@/)
+.PHONY: install ###
+install: $(script_dst)
 
-.PHONY: build-object ### recipe building object
-build-object: build/build.o
+$(script_dst): | $(dpopchev_dir)
+	@ln -sf $(abspath $(script_src)) $@
+	@$(call log,'script installed at $@',$(done))
 
-build/build.o: | $(build_dir)
-	@touch $@
-	@$(call log,'built object: $(notdir $@)',$(done))
-
-.PHONY: clean-build ###
-clean-build:
-	@rm -rf $(build_dir)
-	@$(call del_gitignore,$(build_dir))
-	@$(call log,'$@',$(done))
-
-.PHONY: build-stamped ### recipe using stamp idiom
-build-stamped: $(stamp_dir)/stamped.stamp
-
-$(stamp_dir)/stamped.stamp: | $(stamp_dir)
-	@touch $@
-	@$(call log,'making a build using stamp idiom',$(done))
-
-.PHONY: recipe ### recipe depending on stamped built
-recipe:
-	@if [ ! -e $(stamp_dir)/stamped.stamp ]; then \
-		echo 'Required build-stamped recipe not executed yet';\
-		echo 'do: make build-stamped first';\
-		false;\
-	fi
-	@$(call log,'recipe execution',$(done))
-
-module ?= module
-args ?= ''
-.PHONY: run ### run <module>, pass <args>
-run:
-ifeq ($(module),module)
-	@echo 'run with $(module) using $(args)'
-else
-	@echo 'run with $(module) using $(args)'
-endif
-
-.PHONY: clean ###
-clean: clean-build
-	@rm -rf $(stamp_dir)
+.PHONY: uninstall ###
+uninstall:
+	@rm -rf $(script_dst)
