@@ -23,10 +23,10 @@ make install
 
 #### User wide available
 
-Add `~/.dpopchev` in your `PATH`, e.g.
+Add `~/.local/bin/dpopchev` in your `PATH`, e.g.
 
 ```
-PATH="~/.dpopchev/:$PATH"
+PATH="~/.local/bin/dpopchev:$PATH"
 ```
 
 ### Make snapshot

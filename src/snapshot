@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 LATEST_MARK="latest"
-SCRIPT_NAME="$0"
+SCRIPT_NAME="$(basename $0)"
 LOGFILE="$SCRIPT_NAME.log"
 
 usage() {

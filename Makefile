@@ -58,7 +58,7 @@ clean-stampdir:
 	@$(call del_gitignore,$(stamp_dir))
 
 src_dir := src
-dpopchev_dir := ~/.dpopchev
+dpopchev_dir := ~/.local/bin/dpopchev
 script_name := snapshot
 script_src := $(src_dir)/$(script_name)
 script_dst := $(dpopchev_dir)/$(script_name)
