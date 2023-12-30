@@ -29,7 +29,15 @@ Add `~/.local/bin/dpopchev` in your `PATH`, e.g.
 PATH="~/.local/bin/dpopchev:$PATH"
 ```
 
-### Make snapshot
+### Options
+
+Execute with empty parameters
+
+```
+snapshot # see short/long option versions
+```
+
+### Make local snapshot
 
 To create a snapshot backup of `targetdir` into `destination` just do
 
@@ -45,7 +53,15 @@ After execution in `destination` you will find:
 
 In the directory of execution you will see logfile.
 
-#### Exclude
+### Make remote snapshot
+
+Similar to the local one but with several more flags:
+
+```
+snapshot -s targetdir -d destination --is-remote -p sshpass/passfile -u user -h host
+```
+
+### Exclude nodes
 
 ```
 snapshot targetdir -l destinaton -e exclude_list
