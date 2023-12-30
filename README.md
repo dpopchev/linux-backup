@@ -78,9 +78,9 @@ Sample exclusion of directories and files content:
 /home/user/.cache
 ```
 
-### Help
+### Restore
 
-Execute without arguments to see latest description.
+Execute the command in reverse with source pointing to `latest`.
 
 ## Acknowledgment
 
