@@ -25,14 +25,20 @@ make_rsync_options() {
     local "$@"
 
     local -a options
+
+    if [[ ! -z $is_dry_run ]]; then
+        options+=( --dry-run )
+    fi
+
+    # not supported by some servers; mkpath is done manually
+    # options+=( --acls )
+    # options+=( --mkpath )
     options+=( --archive )
-    options+=( --acls )
     options+=( --xattrs )
     options+=( --delete )
     options+=( --human-readable )
     options+=( --out-format='%f:%i:%o' )
     options+=( --stats )
-    options+=( --mkpath )
     options+=( --link-dest $link_dest )
     options+=( --log-file=$LOGFILE)
 
@@ -40,33 +46,11 @@ make_rsync_options() {
         options+=( --exclude-from $exclude_from )
     fi
 
-    if [[ ! -z $is_dry_run ]]; then
-        options+=( --dry-run )
-    fi
-
-    if [[ $is_remote == true ]]; then
-        options+=( -e ssh )
-    fi
-
     echo "${options[@]}"
 }
 
 make_snapshot_name() {
-    echo $(date +%Y-%m-%d-%H-%M-%S)
-}
-
-make_snapshot_dst() {
-    local is_local="${1:?missing control variable for snapshot loacllity target}"
-    local dst="${2:?missing destination path}/$(make_snapshot_name)"
-
-    if [[ $is_local == true ]]; then
-        echo $dst
-        return
-    fi
-
-    local user="${3:?missing remote user name}"
-    local host="${4:?missing remote host}"
-    echo "$user@$host:$dst"
+    date +%Y-%m-%d-%H-%M-%S
 }
 
 notify_exit_status() {
@@ -88,7 +72,7 @@ make_snapshot() {
     local snapshots="$1"; shift;
     local snapshot_name="$1"; shift;
     local is_remote="$1"; shift;
-    local passfile user host
+    local user host passfile
     local "$@"
 
     local -a rsync_cmd
@@ -103,17 +87,19 @@ make_snapshot() {
 
     if [[ $is_remote == true ]]; then
         rsync_cmd+=( "$user@$host:$snapshots/$snapshot_name")
+        sshpass -f $passfile ssh $user@$host mkdir -p $snapshots
     fi
 
     if [[ $is_remote == false ]]; then
         rsync_cmd+=( $snapshots/$snapshot_name )
+        mkdir -p $snapshots
     fi
 
     ${rsync_cmd[@]} \
         | sed '/^$/Q' \
         | while read status; do notify-send "$status"; done
 
-    return $?
+    return "${PIPESTATUS[0]}"
 }
 
 make_last_link() {
@@ -168,15 +154,28 @@ main() {
 
     local snapshots=$dst_prefix/$(basename $src)
     local snapshot_name=$(make_snapshot_name)
-    local options=$(make_rsync_options ../$LATEST_MARK is_dry_run=$is_dry_run exclude_from=$exclude_from is_remote=$is_remote)
+    local -a options=$(make_rsync_options \
+        ../$LATEST_MARK \
+        is_dry_run=$is_dry_run \
+        exclude_from=$exclude_from \
+        is_remote=$is_remote \
+        passfile=$passfile \
+    )
 
     notify-send "$SCRIPT_NAME: creating snapshot for $(basename $src)"
 
-    $(make_snapshot "${options[@]}" $src $snapshots $snapshot_name $is_remote passfile=$passfile user=$user host=$host)\
+    make_snapshot "${options[@]}" $src $snapshots $snapshot_name \
+        $is_remote \
+        passfile=$passfile \
+        user=$user \
+        host=$host
 
     notify_exit_status $? $(basename $src)
 
-    $(make_last_link $snapshots $snapshot_name $is_remote passfile=$passfile user=$user host=$host)
+    make_last_link $snapshots $snapshot_name $is_remote \
+        passfile=$passfile \
+        user=$user \
+        host=$host
 }
 
 main "$@"
