@@ -6,8 +6,9 @@ Make snapshot backups using `rsync` into remote server.
 
 ### Requirements
 
-- `rsync`
-- `sshpass`
+- rsync
+- sshpass
+- libnotify: notify-send
 
 ### Install
 
@@ -47,7 +48,7 @@ snapshot -s targetdir -d destinaton
 
 After execution in `destination` you will find:
 
-- snapshot of `targetdir` named after time of execution, i.e. `YYYY-MM-DD-H-M-S`
+- snapshot of `targetdir` named after time of execution, i.e. `DAYOFWEEK-WEEKNUMBER`
 - `latest` pointing to the most recent backup
 - unchanged files in between snapshots are hard link copies
 
@@ -81,6 +82,45 @@ Sample exclusion of directories and files content:
 ### Restore
 
 Execute the command in reverse with source pointing to `latest`.
+
+### Schedule
+
+Use story: we want to make snapshots of some user directories to the home NAS.
+
+Lets target two snapshot attempts per day by doing an `crontab` entry of wrapper
+script; note display is needed to redirect `notify-send` to the active display.
+
+```
+# minute hour day(of month) month day(of week)
+* * * * * DISPLAY=:0 ~/.local/bin/dpopchev/snapshot_dir
+```
+
+The snapshot script `snapshot_dir` can look like
+
+```
+#!/usr/bin/env bash
+
+SRC=~/snapshot/target/dir
+DST=/remote/snapshots
+PASSFILE=~/path/passfile
+LOGFILE=~/.snapshot.log
+USER=user
+HOST=hostname
+WIFI_UUID=uuid
+
+active_uuid=$(nmcli --fields uuid,name,type connection show --active \
+              | grep wifi \
+              | cut -d' ' -f1)
+
+[[ $active_uuid == $WIFI_UUID ]] && ./snapshot -s $SRC -d $DST \
+                                    --is-remote \
+                                    -p $PASSFILE \
+                                    -u $USER \
+                                    -h $HOST \
+                                    -l $LOGFILE
+```
+
+Do not forget to give execution rights, e.g. `chmod u+x ~/.local/bin/dpopchev/snapshot_dir`
 
 ## Acknowledgment
 

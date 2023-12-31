@@ -16,12 +16,13 @@ $SCRIPT_NAME [OPTIONS]
 --is-remote: make snapshot on remote server, ruser and rhost are needed
 --is-dry-run: rsync trial run
 -p/--passfile: passfile to use for connecting to host trough sshpass
+-l/--logfile: logfile
 HELPMSG
 }
 
 make_rsync_options() {
     local link_dest=${1:?expecting link_dest}; shift;
-    local exclude_from is_dry_run is_remote
+    local exclude_from is_dry_run is_remote logfile
     local "$@"
 
     local -a options
@@ -40,7 +41,7 @@ make_rsync_options() {
     options+=( --out-format='%f:%i:%o' )
     options+=( --stats )
     options+=( --link-dest $link_dest )
-    options+=( --log-file=$LOGFILE)
+    options+=( --log-file=$logfile)
 
     if [[ -n $exclude_from ]]; then
         options+=( --exclude-from $exclude_from )
@@ -50,7 +51,8 @@ make_rsync_options() {
 }
 
 make_snapshot_name() {
-    date +%Y-%m-%d-%H-%M-%S
+    # date +%Y-%m-%d-%H-%M-%S
+    date +%U-%A
 }
 
 notify_exit_status() {
@@ -128,6 +130,7 @@ main() {
 
     local user=$USER
     local host='localhost'
+    local logfile=$LOGFILE
     local dst_prefix exclude_from is_dry_run passfile
     local is_remote="false"
 
@@ -141,6 +144,7 @@ main() {
             -p|--passfile) passfile="$2"; shift;;
             --is-remote) is_remote=true;;
             --is-dry-run) is_dry_run=true;;
+            -l|--logfile) logfile="$2"; shift;;
             *) echo "Unknown option $1"; exit 1;;
         esac
         shift
@@ -160,6 +164,7 @@ main() {
         exclude_from=$exclude_from \
         is_remote=$is_remote \
         passfile=$passfile \
+        logfile=$logfile
     )
 
     notify-send "$SCRIPT_NAME: creating snapshot for $(basename $src)"
