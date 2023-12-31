@@ -100,6 +100,7 @@ The snapshot script `snapshot_dir` can look like
 ```
 #!/usr/bin/env bash
 
+SNAPSHOT=~/.local/bin/dpopchev/snapshot
 SRC=~/snapshot/target/dir
 DST=/remote/snapshots
 PASSFILE=~/path/passfile
@@ -112,7 +113,7 @@ active_uuid=$(nmcli --fields uuid,name,type connection show --active \
               | grep wifi \
               | cut -d' ' -f1)
 
-[[ $active_uuid == $WIFI_UUID ]] && ./snapshot -s $SRC -d $DST \
+[[ $active_uuid == $WIFI_UUID ]] && $SNAPSHOT -s $SRC -d $DST \
                                     --is-remote \
                                     -p $PASSFILE \
                                     -u $USER \
