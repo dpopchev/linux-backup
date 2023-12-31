@@ -92,7 +92,7 @@ script; note display is needed to redirect `notify-send` to the active display.
 
 ```
 # minute hour day(of month) month day(of week)
-* * * * * DISPLAY=:0 ~/.local/bin/dpopchev/snapshot_dir
+0 9,21 * * * DISPLAY=:0 ~/.local/bin/dpopchev/snapshot_dir
 ```
 
 The snapshot script `snapshot_dir` can look like
