@@ -26,7 +26,7 @@ make_rsync_options() {
 
     local -a options
 
-    if [[ ! -z $is_dry_run ]]; then
+    if [[ -n $is_dry_run ]]; then
         options+=( --dry-run )
     fi
 
@@ -42,7 +42,7 @@ make_rsync_options() {
     options+=( --link-dest $link_dest )
     options+=( --log-file=$LOGFILE)
 
-    if [[ ! -z $exclude_from ]]; then
+    if [[ -n $exclude_from ]]; then
         options+=( --exclude-from $exclude_from )
     fi
 
