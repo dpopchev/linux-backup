@@ -48,7 +48,7 @@ snapshot -s targetdir -d destinaton
 
 After execution in `destination` you will find:
 
-- snapshot of `targetdir` named after time of execution, i.e. `DAYOFWEEK-WEEKNUMBER`
+- snapshot of `targetdir` named after time of execution, i.e. `WEEKNUMBER-DAYOFWEEK`
 - `latest` pointing to the most recent backup
 - unchanged files in between snapshots are hard link copies
 
