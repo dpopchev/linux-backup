@@ -104,6 +104,9 @@ active_uuid=$(nmcli --fields uuid,name,type connection show --active \
               | grep wifi \
               | cut -d' ' -f1)
 
+# assure content of directory is stored, e.g. not latest/dir/... but latest/...
+[[ -d $SRC ]] && SRC="${SRC%/}/"
+
 [[ $active_uuid == $WIFI_UUID ]] && $SNAPSHOT -s $SRC -d $DST \
                                     --is-remote \
                                     -p $PASSFILE \
