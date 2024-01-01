@@ -85,28 +85,19 @@ Execute the command in reverse with source pointing to `latest`.
 
 ### Schedule
 
-Use story: we want to make snapshots of some user directories to the home NAS.
-
-Lets target two snapshot attempts per day by doing an `crontab` entry of wrapper
-script; note display is needed to redirect `notify-send` to the active display.
-
-```
-# minute hour day(of month) month day(of week)
-0 9,21 * * * DISPLAY=:0 ~/.local/bin/dpopchev/snapshot_dir
-```
-
-The snapshot script `snapshot_dir` can look like
+Lets make snapshots of some user directorie `dir` to the home NAS. We can
+implement wrapper script:
 
 ```
 #!/usr/bin/env bash
 
 SNAPSHOT=~/.local/bin/dpopchev/snapshot
+LOGFILE=~/.snapshot.log
 SRC=~/snapshot/target/dir
 DST=/remote/snapshots
-PASSFILE=~/path/passfile
-LOGFILE=~/.snapshot.log
 USER=user
 HOST=hostname
+PASSFILE=~/path/passfile
 WIFI_UUID=uuid
 
 active_uuid=$(nmcli --fields uuid,name,type connection show --active \
@@ -121,7 +112,15 @@ active_uuid=$(nmcli --fields uuid,name,type connection show --active \
                                     -l $LOGFILE
 ```
 
-Do not forget to give execution rights, e.g. `chmod u+x ~/.local/bin/dpopchev/snapshot_dir`
+We can also schedule runs by making an `crontab` entry.
+
+```
+# minute hour day(of month) month day(of week)
+0 9,21 * * * DISPLAY=:0 ~/.local/bin/dpopchev/snapshot_dir
+```
+
+- `DISPLAY=:0` is needed to redirect `notify-send`
+- rise the user execution flag of the script `snapshot_dir`
 
 ## Acknowledgment
 
