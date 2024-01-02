@@ -3,7 +3,7 @@ set -o pipefail
 
 LATEST_MARK="latest"
 SCRIPT_NAME=$(basename "$0")
-LOGFILE="$SCRIPT_NAME.log"
+LOGFILE="${HOME}/.$SCRIPT_NAME.log"
 
 usage() {
     cat << HELPMSG
@@ -57,14 +57,16 @@ make_snapshot_name() {
 }
 
 notify_exit_status() {
-    local exitcode=$1
+    local exitcode="$1"
+    local snapshot_target="$2"
+    local logfile="$3"
 
     case $exitcode in
         0)
-            notify-send "$SCRIPT_NAME: snapshot $2 created successfully"
+            notify-send "$SCRIPT_NAME: snapshot $snapshot_target created successfully"
             ;;
         *)
-            notify-send "$SCRIPT_NAME: snapshot $2 failed with $exitcode, see $LOGFILE"
+            notify-send "$SCRIPT_NAME: snapshot $snapshot_target failed with $exitcode, see $logfile"
             ;;
     esac
 }
@@ -117,14 +119,15 @@ make_last_link() {
     local passfile user host
     local "$@"
 
-    lncmd="ln --symbolic --force --no-dereference $snapshot_name $LATEST_MARK"
+    local -a lncmd
+    lncmd=(ln --symbolic --force --no-dereference "$snapshot_name" "$LATEST_MARK")
 
     if [[ $is_remote == false ]]; then
-        (cd "$snapshots" && "$lncmd")
+        (cd "$snapshots" && "${lncmd[@]}")
     fi
 
     if [[ $is_remote == true ]]; then
-        sshpass -f "$passfile" ssh "$user"@"$host" "cd $snapshots && $lncmd"
+        sshpass -f "$passfile" ssh "$user"@"$host" "cd $snapshots && ${lncmd[*]}"
     fi
 }
 
@@ -184,7 +187,7 @@ main() {
         user="$user" \
         host="$host"
 
-    notify_exit_status $? $(basename "$src")
+    notify_exit_status $? "$(basename "$src")" "$logfile"
 
     make_last_link "$snapshots" "$snapshot_name" "$is_remote" \
         passfile="$passfile" \
