@@ -42,8 +42,9 @@ make_rsync_options() {
     # out format characters: https://linux.die.net/man/5/rsyncd.conf
     options+=( --out-format='%o:%n:%i' )
     options+=( --stats )
-    options+=( --link-dest "$link_dest" )
-    options+=( --log-file="$logfile")
+    options+=( --link-dest="$link_dest" )
+    options+=( --log-file="$logfile" )
+    options+=( --outbuf=L )
 
     if [[ -n $exclude_from ]]; then
         options+=( --exclude-from "$exclude_from" )
@@ -100,11 +101,11 @@ make_snapshot() {
         mkdir -p "$snapshots"
     fi
 
-    ${rsync_cmd[@]} | sed -nr -e 's/^(send|recv|del):[^\n]+$/&\x0/p' \
-                              -e '/^Number of/H' \
-                              -e '/^Total( transferred)? file/H' \
-                              -e '/^File list transfer time/H' \
-                              -e '${x;s/^\n//;s/$/\x0/;p}' \
+    ${rsync_cmd[@]} | sed -nur -e '/^send|recv|del/{s/$/\x0/p}' \
+                                     -e '/^Number of/H' \
+                                     -e '/^Total( transferred)? file/H' \
+                                     -e '/^File list transfer time/H' \
+                                     -e '${x;s/^\n//;s/$/\x0/;p}' \
     | while IFS= read -r -d '' status; do
         notify-send "${status##$'\n'}";
     done
