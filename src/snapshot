@@ -38,7 +38,7 @@ make_rsync_options() {
     options+=( --xattrs )
     options+=( --delete )
     options+=( --human-readable )
-    options+=( --out-format='%f:%i:%o' )
+    options+=( --out-format='%n:%i:%o' )
     options+=( --stats )
     options+=( --link-dest $link_dest )
     options+=( --log-file=$logfile)
