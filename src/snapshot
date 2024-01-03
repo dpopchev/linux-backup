@@ -39,12 +39,13 @@ make_rsync_options() {
     options+=( --xattrs )
     options+=( --delete )
     options+=( --human-readable )
-    # out format characters: https://linux.die.net/man/5/rsyncd.conf
-    options+=( --out-format='%o:%n:%i' )
     options+=( --stats )
     options+=( --link-dest="$link_dest" )
     options+=( --log-file="$logfile" )
     options+=( --outbuf=L )
+    options+=( --checksum )
+    # out format characters: https://linux.die.net/man/5/rsyncd.conf
+    options+=( --out-format='%o:%n:%i' )
 
     if [[ -n $exclude_from ]]; then
         options+=( --exclude-from "$exclude_from" )
