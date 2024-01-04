@@ -16,6 +16,7 @@ $SCRIPT_NAME [OPTIONS]
 --is-local: make a local snapshot, ruser and rhost not will ignored even when passed
 --is-remote: make snapshot on remote server, ruser and rhost are needed
 --is-dry-run: rsync trial run
+--should-checksum: use 128-bit checksum instead of file size and modification time
 -p/--passfile: passfile to use for connecting to host trough sshpass
 -l/--logfile: logfile
 HELPMSG
@@ -23,13 +24,17 @@ HELPMSG
 
 make_rsync_options() {
     local link_dest=${1:?expecting link_dest}; shift;
-    local exclude_from is_dry_run is_remote logfile
+    local exclude_from is_dry_run is_remote logfile should_checksum
     local "$@"
 
     local -a options
 
     if [[ -n $is_dry_run ]]; then
         options+=( --dry-run )
+    fi
+
+    if [[ -n $should_checksum ]]; then
+        options+=( --checksum )
     fi
 
     # not supported by some servers; mkpath is done manually
@@ -142,7 +147,7 @@ main() {
     local user=$USER
     local host='localhost'
     local logfile=$LOGFILE
-    local dst_prefix exclude_from is_dry_run passfile
+    local dst_prefix exclude_from is_dry_run passfile should_checksum
     local is_remote="false"
 
     while [[ $# -gt 0 ]]; do
@@ -155,6 +160,7 @@ main() {
             -p|--passfile) passfile="$2"; shift;;
             --is-remote) is_remote=true;;
             --is-dry-run) is_dry_run=true;;
+            --should-checksum) should_checksum=true;;
             -l|--logfile) logfile="$2"; shift;;
             *) echo "Unknown option $1"; exit 1;;
         esac
@@ -178,7 +184,8 @@ main() {
         exclude_from="$exclude_from" \
         is_remote="$is_remote" \
         passfile="$passfile" \
-        logfile="$logfile"
+        logfile="$logfile" \
+        should_checksum="$should_checksum"
     )
 
     notify-send "$SCRIPT_NAME: creating snapshot for $(basename $src)"
