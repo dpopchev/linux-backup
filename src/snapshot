@@ -60,7 +60,7 @@ make_rsync_options() {
 }
 
 make_snapshot_name() {
-    date +%U-%A
+    LC_TIME=C.UTF-8 date +%V-%a
 }
 
 notify_exit_status() {
