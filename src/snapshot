@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -o pipefail
 
+PIDLOCK="${HOME}/.snapshot.lock"
 LATEST_MARK="latest"
 SCRIPT_NAME=$(basename "$0")
 LOGFILE="${HOME}/.$SCRIPT_NAME.log"
@@ -195,14 +196,45 @@ main() {
         passfile="$passfile" \
         user="$user" \
         host="$host"
+    local snapshot_exitcode=$?
 
-    notify_exit_status $? "$(basename "$src")" "$logfile"
+    notify_exit_status $snapshot_exitcode "$(basename "$src")" "$logfile"
 
-    make_last_link "$snapshots" "$snapshot_name" "$is_remote" \
-        passfile="$passfile" \
-        user="$user" \
-        host="$host"
+    if [[ $snapshot_exitcode -eq 0 ]]; then
+        make_last_link "$snapshots" "$snapshot_name" "$is_remote" \
+            passfile="$passfile" \
+            user="$user" \
+            host="$host"
+    fi
 }
 
+make_lockfile() {
+    local lockfile="$1"
+
+    if [[ ! -f $lockfile ]]; then
+        echo $$ > $lockfile
+        return
+    fi
+
+    pid=$(cat $lockfile)
+
+    if kill -0 $pid 2>/dev/null; then
+        echo "Script already running; lockfile: $lockfile" 1>&2;
+        exit 1
+    fi
+
+    echo $$ > $lockfile
+    return
+}
+
+remove_lockfile() {
+    rm -rf "$1"
+}
+
+make_lockfile "$PIDLOCK"
+
+trap "remove_lockfile $PIDLOCK" EXIT
+
 main "$@"
+
 exit 0
