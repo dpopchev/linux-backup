@@ -93,7 +93,7 @@ implement wrapper script:
 
 SNAPSHOT=${HOME}/.local/bin/dpopchev/snapshot
 LOGFILE=${HOME}/.snapshot.log
-SRC=~/snapshot/target/dir
+SRC=${HOME}/snapshot/target/dir
 DST=/remote/snapshots
 RUSER=user
 RHOST=hostname
