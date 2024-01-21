@@ -125,6 +125,41 @@ We can also schedule runs by making an `crontab` entry.
 - `DISPLAY=:0` is needed to redirect `notify-send`
 - rise the user execution flag of the script `snapshot_dir`
 
+### Restore
+
+#### Preliminaries
+
+You can make available variables from `Schedule` using
+
+```bash
+# use with cautions
+while IFS= read -r variable; do
+    source <(echo "${variable}")
+done < <(sed -rn '/^[A-Z]+=/p' snapshot_dir)
+```
+
+- `ssh user@server 'CMD'` executes a command on the `server` as `user` over `ssh`.
+- `sshpass -f file CMD` will pass password from `file` to command prompt
+
+#### Snapshots
+
+See available snapshots:
+
+```bash
+sshpass -f ${PASSFILE} ssh ${USER}@${HOST} ls -la ${DST}/$(basename ${SRC})
+```
+
+#### Restore
+
+Change `latest` to snapshot name if in need.
+
+```bash
+sshpass -f "${PASSFILE}" \
+    rsync --archive --xattrs --progress --verbose --copy-dirlinks \
+    "${RUSER}"@"${RHOST}":"${DST}"/$(basename "${SRC}")/latest \
+    "${SRC}"/SNAPSHOT_RESTORED/
+```
+
 ## Acknowledgment
 
 - [arch wiki](https://wiki.archlinux.org/title/rsync)
