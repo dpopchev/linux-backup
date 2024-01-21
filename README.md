@@ -88,7 +88,7 @@ Execute the command in reverse with source pointing to `latest`.
 Lets make snapshots of some user directorie `dir` to the home NAS. We can
 implement wrapper script:
 
-```
+```bash
 #!/usr/bin/env bash
 
 SNAPSHOT=${HOME}/.local/bin/dpopchev/snapshot
