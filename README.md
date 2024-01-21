@@ -91,12 +91,12 @@ implement wrapper script:
 ```
 #!/usr/bin/env bash
 
-SNAPSHOT=~/.local/bin/dpopchev/snapshot
-LOGFILE=~/.snapshot.log
+SNAPSHOT=${HOME}/.local/bin/dpopchev/snapshot
+LOGFILE=${HOME}/.snapshot.log
 SRC=~/snapshot/target/dir
 DST=/remote/snapshots
-USER=user
-HOST=hostname
+RUSER=user
+RHOST=hostname
 PASSFILE=~/path/passfile
 WIFI_UUID=uuid
 
@@ -110,8 +110,8 @@ active_uuid=$(nmcli --fields uuid,name,type connection show --active \
 [[ $active_uuid == $WIFI_UUID ]] && $SNAPSHOT -s $SRC -d $DST \
                                     --is-remote \
                                     -p $PASSFILE \
-                                    -u $USER \
-                                    -h $HOST \
+                                    -u $RUSER \
+                                    -h $RHOST \
                                     -l $LOGFILE
 ```
 
