@@ -97,7 +97,7 @@ SRC=${HOME}/snapshot/target/dir
 DST=/remote/snapshots
 RUSER=user
 RHOST=hostname
-PASSFILE=~/path/passfile
+PASSFILE=${HOME}/path/passfile
 WIFI_UUID=uuid
 
 active_uuid=$(nmcli --fields uuid,name,type connection show --active \
@@ -109,6 +109,7 @@ active_uuid=$(nmcli --fields uuid,name,type connection show --active \
 
 [[ $active_uuid == $WIFI_UUID ]] && $SNAPSHOT -s $SRC -d $DST \
                                     --is-remote \
+                                    --should-checksum \
                                     -p $PASSFILE \
                                     -u $RUSER \
                                     -h $RHOST \
