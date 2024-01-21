@@ -14,12 +14,12 @@ $SCRIPT_NAME [OPTIONS]
 -s/--src: the directory/file to make snapshot backup
 -d/--dst-prefix: destination path prefix
 -e/--exclude_from: pass list of exclusions to rsync as a file
+-p/--passfile: passfile to use for connecting to host trough sshpass
+-l/--logfile: logfile
 --is-local: make a local snapshot, ruser and rhost not will ignored even when passed
 --is-remote: make snapshot on remote server, ruser and rhost are needed
 --is-dry-run: rsync trial run
 --should-checksum: use 128-bit checksum instead of file size and modification time
--p/--passfile: passfile to use for connecting to host trough sshpass
--l/--logfile: logfile
 HELPMSG
 }
 
@@ -159,10 +159,10 @@ main() {
             -s|--src) src="$2"; shift;;
             -e|--exclude-from) exclude_from="$2"; shift;;
             -p|--passfile) passfile="$2"; shift;;
+            -l|--logfile) logfile="$2"; shift;;
             --is-remote) is_remote=true;;
             --is-dry-run) is_dry_run=true;;
             --should-checksum) should_checksum=true;;
-            -l|--logfile) logfile="$2"; shift;;
             *) echo "Unknown option $1"; exit 1;;
         esac
         shift
