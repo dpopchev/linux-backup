@@ -49,7 +49,7 @@ clean_mount_point() {
 }
 
 get_runtime_dir() {
-    echo $XDG_RUNTIME_DIR
+    echo "${XDG_RUNTIME_DIR:=/tmp}"
 }
 
 make_mounting_point() {
