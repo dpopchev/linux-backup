@@ -3,114 +3,117 @@
 echoerr() { echo "$@" 1>&2; }
 
 make_mount_options() {
-	# make the mount options
-	# first positional argument is path to credentials file
-	local -r credentials="$1"
-	local -a options
-	options+=("uid=$(id -u)")
-	options+=("gid=$(id -g)")
-	options+=("rw")
-	options+=("credentials=$credentials")
-	local IFS=,; echo "${options[*]}"
+    # make the mount options
+    # first positional argument is path to credentials file
+    local -r credentials="$1"
+    local -a options
+    options+=("uid=$(id -u)")
+    options+=("gid=$(id -g)")
+    options+=("rw")
+    options+=("credentials=$credentials")
+    local IFS=,; echo "${options[*]}"
 }
 
 make_backup_options() {
-	# make the rsync options
-	# first positional argument is path to credentials file
-	local -a options
-	options+=("--archive")
-	options+=("--update")
-	options+=("--delete")
-	options+=("--partial")
-	options+=("--progress")
-	options+=("--human-readable")
-	options+=("--info=progress2")
-	#options+=("--xattrs")
-	options+=("--acls")
-	options+=("--stats")
-	options+=("--checksum")
-	options+=("--compress")
-	options+=("--mkpath")
-	local IFS=\ ; echo "${options[*]}"
+    # make the rsync options
+    # first positional argument is path to credentials file
+    local -a options
+    options+=("--archive")
+    options+=("--update")
+    options+=("--delete")
+    options+=("--partial")
+    options+=("--progress")
+    options+=("--human-readable")
+    options+=("--info=progress2")
+    # TODO: get_xattrs exception was risen
+    #options+=("--xattrs")
+    options+=("--acls")
+    options+=("--stats")
+    options+=("--checksum")
+    options+=("--compress")
+    options+=("--mkpath")
+    local IFS=\ ; echo "${options[*]}"
 }
 
 is_mounted() {
-	mountpoint -q "$1"
+    mountpoint -q "$1"
 }
 
 clean_mount_point() {
-	local -r mount_point="$1"
-	if is_mounted "$mount_point"; then
-		echoerr "mount point: $mount_point is still mounted, skipping removal"
-		return 1
-	fi
-	rm -rf "$1"
+    local -r mount_point="$1"
+    if is_mounted "$mount_point"; then
+        echoerr "mount point: $mount_point is still mounted, skipping removal"
+        return 1
+    fi
+    rm -rf "$1"
 }
 
 get_runtime_dir() {
-	echo $XDG_RUNTIME_DIR
+    echo $XDG_RUNTIME_DIR
 }
 
 make_mounting_point() {
-	local -r mount_point=$(mktemp -p $(get_runtime_dir) -d)
-	if [[ ! -d $mount_point ]]; then
-		echoerr "Failed to create mounting point $mount_point"
-		exit 1
-	fi
-	echo $mount_point
+    local -r mount_point=$(mktemp -p $(get_runtime_dir) -d)
+    if [[ ! -d $mount_point ]]; then
+        echoerr "Failed to create mounting point $mount_point"
+        exit 1
+    fi
+    echo $mount_point
 }
 
 unmount_share() {
-	local -r mount_point="$1"
-	if ! is_mounted $mount_point; then
-		echoerr "mount point: $mount_point was clean; nothing to unmount"
-		return
-	fi
-	if sudo umount $mount_point; then
-		return
-	fi
-	wait_time=5
-	while is_mounted $mount_point; do
-		echoerr "wait $wait_time for umount try"
-		sleep $wait_time
-		sudo umount $mount_point
-	done
+    local -r mount_point="$1"
+    if ! is_mounted $mount_point; then
+        echoerr "mount point: $mount_point was clean; nothing to unmount"
+        return
+    fi
+    if sudo umount $mount_point; then
+        return
+    fi
+    wait_time=5
+    while is_mounted $mount_point; do
+        echoerr "wait $wait_time for umount try"
+        sleep $wait_time
+        sudo umount $mount_point
+    done
 }
 
 mount_share() {
-	local -r credentials="$1"
-	local -r share="$2"
-	local -r mount_point="$3"
-	sudo mount -o $(make_mount_options "$credentials") \
-		-t cifs \
-		"$share" "$mount_point"
-	if [[ $? -ne 0 ]]; then
-		echoerr "could not mount share: $share at $mount_point using credentials $credentials"
-		exit 1
-	fi
+    local -r credentials="$1"
+    local -r share="$2"
+    local -r mount_point="$3"
+    sudo mount -o $(make_mount_options "$credentials") \
+        -t cifs \
+        "$share" "$mount_point"
+    if [[ $? -ne 0 ]]; then
+        echoerr "could not mount share: $share at $mount_point using credentials $credentials"
+        exit 1
+    fi
 }
 
 cleanup() {
-	local -r mount_point="$1"
-	unmount_share $mount_point
-	clean_mount_point $mount_point
+    local -r mount_point="$1"
+    unmount_share $mount_point
+    clean_mount_point $mount_point
 }
 
 backup() {
-	local -r src="$1"
-	local -r dst="${2%/}"
-	rsync $(make_backup_options) $src $dst
+    local -r src="$1"
+    local -r dst="${2%/}"
+    rsync $(make_backup_options) $src $dst
 }
 
 main() {
-	local -r mount_point=$(make_mounting_point)
-	mount_share "$CREDENTIALS" "$SMB_SHARE" "$mount_point"
+    local -r mount_point=$(make_mounting_point)
+    mount_share "$CREDENTIALS" "$SMB_SHARE" "$mount_point"
 
-	trap "cleanup $mount_point; exit 0" 1 2 3 6
+    trap "cleanup $mount_point; exit 0" 1 2 3 6
 
-	backup "$SRC" "$mount_point/$DST"
+    backup "$SRC" "$mount_point/$DST"
 
-	cleanup $mount_point
+    cleanup $mount_point
 }
 
-main
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
