@@ -1,0 +1,327 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+set -x
+
+TARGET=${TARGET:=/backup/target/path}
+SNAPSHOTS=${SNAPSHOTS:=/snapshot/destination/path}
+LATEST="latest"
+RESTORED="RESTORED_SNAPSHOT"
+
+usage() {
+    cat << HELPMSG
+Usage: $(basename $0) [--restore]
+
+Invoke without arguments to backup by updating a snpshot tree.
+
+To restore latest snapshot invoke with --should_restore flag.
+
+Update target: $TARGET
+Destination:   $SNAPSHOTS
+HELPMSG
+}
+
+snapshot_options() {
+    local -a options
+    options+=("--archive")
+    options+=("--update")
+    options+=("--delete")
+    # note -P same as --partial --progress
+    options+=("-P")
+    options+=("--partial-dir=.rsync-partial")
+    options+=("--xattrs")
+    options+=("--acls")
+    options+=("--human-readable")
+    options+=("--progress")
+    options+=("--stats")
+    options+=("--checksum")
+    options+=("--link-dest=../$LATEST")
+    options+=("--mkpath")
+
+    local IFS=\ ; echo "${options[*]}"
+}
+
+restore_options() {
+    local -a options
+    options+=("--archive")
+    options+=("-P")
+    options+=("--partial-dir=.rsync-partial")
+    options+=("--xattrs")
+    options+=("--acls")
+    options+=("--human-readable")
+    options+=("--progress")
+    options+=("--stats")
+    options+=("--copy-dirlinks")
+    options+=("--mkpath")
+
+    local IFS=\ ; echo "${options[*]}"
+}
+
+remove_trailling_slashes() {
+    local r="$1"
+    case "$r" in
+        /) r="/" ;;
+        */) r="${r%/}" ;;
+    esac
+    echo $r
+}
+
+make_snapshot_name() {
+    LC_TIME=C.UTF-8 date +%V-%a-%M
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    TARGET="${TARGET%/}"
+    SNAPSHOTS="${SNAPSHOTS%/}"
+
+    snapshot_path="$SNAPSHOTS/$(basename $TARGET)"
+    if [[ $# -eq 0 ]]; then
+        snapshot=$snapshot_path/$(make_snapshot_name)
+        rsync $(snapshot_options) "$TARGET" "$snapshot"
+        ln -sf --no-dereference "$snapshot" $snapshot_path/$LATEST
+        exit 0
+    fi
+
+    should_restore="$1"; shift;
+    if [[ $should_restore == --restore ]]; then
+        rsync $(restore_options) $snapshot_path/$LATEST $TARGET/$RESTORED
+        exti 0
+    fi
+    usage
+    exit 1
+fi
+
+#WIP clean up and documentation
+
+PIDLOCK="${HOME}/.snapshot.lock"
+SCRIPT_NAME=$(basename "$0")
+LOGFILE="${HOME}/.$SCRIPT_NAME.log"
+
+usage() {
+    cat << HELPMSG
+$SCRIPT_NAME [OPTIONS]
+-u/--ruser: remote user, defautl is the <USER> env variable
+-h/--rhost: remote host name, default is localhost
+-s/--src: the directory/file to make snapshot backup
+-d/--dst-prefix: destination path prefix
+-e/--exclude_from: pass list of exclusions to rsync as a file
+-p/--passfile: passfile to use for connecting to host trough sshpass
+-l/--logfile: logfile
+--is-local: make a local snapshot, ruser and rhost not will ignored even when passed
+--is-remote: make snapshot on remote server, ruser and rhost are needed
+--is-dry-run: rsync trial run
+--should-checksum: use 128-bit checksum instead of file size and modification time
+HELPMSG
+}
+
+make_rsync_options() {
+    local link_dest=${1:?expecting link_dest}; shift;
+    local exclude_from is_dry_run is_remote logfile should_checksum
+    local "$@"
+
+    local -a options
+
+    if [[ -n $is_dry_run ]]; then
+        options+=( --dry-run )
+    fi
+
+    if [[ -n $should_checksum ]]; then
+        options+=( --checksum )
+    fi
+
+    # not supported by some servers; mkpath is done manually
+    # options+=( --acls )
+    # options+=( --mkpath )
+    options+=( --archive )
+    options+=( --xattrs )
+    options+=( --delete )
+    options+=( --human-readable )
+    options+=( --stats )
+    options+=( --link-dest="$link_dest" )
+    options+=( --log-file="$logfile" )
+    options+=( --outbuf=L )
+    options+=( --checksum )
+    # out format characters: https://linux.die.net/man/5/rsyncd.conf
+    options+=( --out-format='%o:%n:%i' )
+
+    if [[ -n $exclude_from ]]; then
+        options+=( --exclude-from "$exclude_from" )
+    fi
+
+    echo "${options[@]}"
+}
+
+notify_exit_status() {
+    local exitcode="$1"
+    local snapshot_target="$2"
+    local logfile="$3"
+
+    case $exitcode in
+        0)
+            notify-send "$SCRIPT_NAME: snapshot $snapshot_target created successfully"
+            ;;
+        *)
+            notify-send "$SCRIPT_NAME: snapshot $snapshot_target failed with $exitcode, see $logfile"
+            ;;
+    esac
+}
+
+make_snapshot() {
+    local -a options="$1"; shift;
+    local target="$1"; shift;
+    local snapshots="$1"; shift;
+    local snapshot_name="$1"; shift;
+    local is_remote="$1"; shift;
+    local user host passfile
+    local "$@"
+
+    local -a rsync_cmd
+
+    if [[ $is_remote == true ]]; then
+        rsync_cmd+=( sshpass -f "$passfile" )
+    fi
+
+    rsync_cmd+=( rsync )
+    rsync_cmd+=( "${options[@]}" )
+    rsync_cmd+=( "$target" )
+
+    if [[ $is_remote == true ]]; then
+        rsync_cmd+=( "$user@$host:$snapshots/$snapshot_name")
+        sshpass -f "$passfile" ssh "$user"@"$host" mkdir -p "$snapshots"
+    fi
+
+    if [[ $is_remote == false ]]; then
+        rsync_cmd+=( "$snapshots"/"$snapshot_name" )
+        mkdir -p "$snapshots"
+    fi
+
+    ${rsync_cmd[@]} | sed -nur -e '/^send|recv|del/{s/$/\x0/p}' \
+                                     -e '/^Number of/H' \
+                                     -e '/^Total( transferred)? file/H' \
+                                     -e '/^File list transfer time/H' \
+                                     -e '${x;s/^\n//;s/$/\x0/;p}' \
+    | while IFS= read -r -d '' status; do
+        notify-send "${status##$'\n'}";
+    done
+
+    return "$?"
+}
+
+make_last_link() {
+    local snapshots="$1"; shift;
+    local snapshot_name="$1"; shift;
+    local is_remote="$1"; shift;
+    local passfile user host
+    local "$@"
+
+    local -a lncmd
+    lncmd=(ln --symbolic --force --no-dereference "$snapshot_name" "$LATEST_MARK")
+
+    if [[ $is_remote == false ]]; then
+        (cd "$snapshots" && "${lncmd[@]}")
+    fi
+
+    if [[ $is_remote == true ]]; then
+        sshpass -f "$passfile" ssh "$user"@"$host" "cd $snapshots && ${lncmd[*]}"
+    fi
+}
+
+main() {
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 1
+    fi
+
+    local user=$USER
+    local host='localhost'
+    local logfile=$LOGFILE
+    local dst_prefix exclude_from is_dry_run passfile should_checksum
+    local is_remote="false"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -u|--user) user="$2"; shift;;
+            -h|--host) host="$2"; shift;;
+            -d|--dst-prefix) dst_prefix="${2%/}"; shift;;
+            -s|--src) src="$2"; shift;;
+            -e|--exclude-from) exclude_from="$2"; shift;;
+            -p|--passfile) passfile="$2"; shift;;
+            -l|--logfile) logfile="$2"; shift;;
+            --is-remote) is_remote=true;;
+            --is-dry-run) is_dry_run=true;;
+            --should-checksum) should_checksum=true;;
+            *) echo "Unknown option $1"; exit 1;;
+        esac
+        shift
+    done
+
+    if [[ $is_remote == true ]]; then
+        [[ -z $user ]] && echo 'missing user' && exit 1
+        [[ -z $host ]] && echo 'missing host' && exit 1
+        [[ ! -e $passfile ]] && echo 'missing passfile' && exit 1
+    fi
+
+    local snapshots
+    snapshots="$dst_prefix"/$(basename "$src")
+    local snapshot_name
+    snapshot_name=$(make_snapshot_name)
+    local -a options
+    options=$(make_rsync_options \
+        ../"$LATEST_MARK" \
+        is_dry_run="$is_dry_run" \
+        exclude_from="$exclude_from" \
+        is_remote="$is_remote" \
+        passfile="$passfile" \
+        logfile="$logfile" \
+        should_checksum="$should_checksum"
+    )
+
+    notify-send "$SCRIPT_NAME: creating snapshot for $(basename $src)"
+
+    make_snapshot "${options[@]}" "$src" "$snapshots" "$snapshot_name" \
+        "$is_remote" \
+        passfile="$passfile" \
+        user="$user" \
+        host="$host"
+    local snapshot_exitcode=$?
+
+    notify_exit_status $snapshot_exitcode "$(basename "$src")" "$logfile"
+
+    if [[ $snapshot_exitcode -eq 0 ]]; then
+        make_last_link "$snapshots" "$snapshot_name" "$is_remote" \
+            passfile="$passfile" \
+            user="$user" \
+            host="$host"
+    fi
+}
+
+make_lockfile() {
+    local lockfile="$1"
+
+    if [[ ! -f $lockfile ]]; then
+        echo $$ > $lockfile
+        return
+    fi
+
+    pid=$(cat $lockfile)
+
+    if kill -0 $pid 2>/dev/null; then
+        echo "Script already running; lockfile: $lockfile" 1>&2;
+        exit 1
+    fi
+
+    echo $$ > $lockfile
+    return
+}
+
+remove_lockfile() {
+    rm -rf "$1"
+}
+
+make_lockfile "$PIDLOCK"
+
+trap "remove_lockfile $PIDLOCK" EXIT
+
+main "$@"
+
+exit 0

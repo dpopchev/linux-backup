@@ -1,22 +1,16 @@
 # linux-snapshot
 
-Make snapshot backups using `rsync` into remote server.
+Backup recipes for per target.
 
 ## Installation
 
 ### Requirements
 
 - rsync
-- sshpass
-- libnotify: notify-send
 
 ### Install
 
-```
-git clone --depth 1 https://github.com/dpopchev/linux-snapshot
-cd linux-snapshot
-make install
-```
+Make a copy and replace variables.
 
 ## Usage
 
