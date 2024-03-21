@@ -70,6 +70,27 @@ make_snapshot_name() {
     LC_TIME=C.UTF-8 date +%V-%a-%M
 }
 
+make_snapshot() {
+    local -r src=$1/
+    local -r dst=$2
+
+    rsync $(snapshot_options) "$src" "$dst"
+}
+
+mark_latest() {
+    local -r target="$1"
+    local -r latest="$2"
+    ln -sf --no-dereference "$target" "$latest"
+}
+
+restore_latest() {
+    local -r latest=$1/
+    local -r dest=$2
+
+    rsync $(restore_options) "$latest" "$dest"
+}
+
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     TARGET="${TARGET%/}"
     SNAPSHOTS="${SNAPSHOTS%/}"
@@ -77,15 +98,15 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     snapshot_path="$SNAPSHOTS/$(basename $TARGET)"
     if [[ $# -eq 0 ]]; then
         snapshot=$snapshot_path/$(make_snapshot_name)
-        rsync $(snapshot_options) "$TARGET" "$snapshot"
-        ln -sf --no-dereference "$snapshot" $snapshot_path/$LATEST
+        make_snapshot "$TARGET" "$snapshot"
+        mark_latest "$snapshot" "$snapshot_path/$LATEST"
         exit 0
     fi
 
     should_restore="$1"; shift;
     if [[ $should_restore == --restore ]]; then
-        rsync $(restore_options) $snapshot_path/$LATEST $TARGET/$RESTORED
-        exti 0
+        restore_latest $snapshot_path/$LATEST $TARGET/$RESTORED
+        exit 0
     fi
     usage
     exit 1
