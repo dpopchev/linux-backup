@@ -1,119 +1,105 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-echoerr() { echo "$@" 1>&2; }
+TARGET=${TARGET:=/backup/target/path}
+BACKUPS=${BACKUPS:=/snapshot/destination/path}
+RESTORED="RESTORED_BACKUP"
+RUNTIME_DIR=${XDG_RUNTIME_DIR:=${HOME}}
 
-make_mount_options() {
-    # make the mount options
-    # first positional argument is path to credentials file
-    local -r credentials="$1"
-    local -a options
-    options+=("uid=$(id -u)")
-    options+=("gid=$(id -g)")
-    options+=("rw")
-    options+=("credentials=$credentials")
-    local IFS=,; echo "${options[*]}"
+usage() {
+    cat << HELPMSG
+Usage: $(basename $0) [--restore]
+
+Invoke without arguments to backup by updating a snpshot tree.
+
+To restore backup invoke with --restore flag.
+
+Update target: $TARGET
+Destination:   $BACKUPS
+HELPMSG
 }
 
-make_backup_options() {
-    # make the rsync options
-    # first positional argument is path to credentials file
+backup_options() {
     local -a options
     options+=("--archive")
     options+=("--update")
     options+=("--delete")
     options+=("--partial")
-    options+=("--progress")
-    options+=("--human-readable")
-    options+=("--info=progress2")
-    # TODO: get_xattrs exception was risen
-    #options+=("--xattrs")
+    options+=("--partial-dir=$RUNTIME_DIR/backup-partial")
+    options+=("--info=progress2" "-v")
+    options+=("--xattrs")
     options+=("--acls")
+    options+=("--human-readable")
     options+=("--stats")
     options+=("--checksum")
-    options+=("--compress")
     options+=("--mkpath")
+    options+=("--log-file=$RUNTIME_DIR/backup.log")
+
     local IFS=\ ; echo "${options[*]}"
 }
 
-is_mounted() {
-    mountpoint -q "$1"
+restore_options() {
+    local -a options
+    options+=("--archive")
+    options+=("--partial")
+    options+=("--partial-dir=$RUNTIME_DIR/restore-partial")
+    options+=("--info=progress2" "-v")
+    options+=("--xattrs")
+    options+=("--acls")
+    options+=("--human-readable")
+    options+=("--stats")
+    options+=("--mkpath")
+    options+=("--log-file=$RUNTIME_DIR/backup-restore.log")
+
+    local IFS=\ ; echo "${options[*]}"
 }
 
-clean_mount_point() {
-    local -r mount_point="$1"
-    if is_mounted "$mount_point"; then
-        echoerr "mount point: $mount_point is still mounted, skipping removal"
-        return 1
-    fi
-    rm -rf "$1"
+remove_trailling_slashes() {
+    local r="$1"
+    case "$r" in
+        /) r="/" ;;
+        */) r="${r%/}" ;;
+    esac
+    echo $r
 }
 
-get_runtime_dir() {
-    echo "${XDG_RUNTIME_DIR:=/tmp}"
-}
-
-make_mounting_point() {
-    local -r mount_point=$(mktemp -p $(get_runtime_dir) -d)
-    if [[ ! -d $mount_point ]]; then
-        echoerr "Failed to create mounting point $mount_point"
-        exit 1
-    fi
-    echo $mount_point
-}
-
-unmount_share() {
-    local -r mount_point="$1"
-    if ! is_mounted $mount_point; then
-        echoerr "mount point: $mount_point was clean; nothing to unmount"
+append_trailling_slash() {
+    if [[ -d "$1" ]]; then
+        echo "$1/"
         return
     fi
-    if sudo umount $mount_point; then
-        return
-    fi
-    wait_time=5
-    while is_mounted $mount_point; do
-        echoerr "wait $wait_time for umount try"
-        sleep $wait_time
-        sudo umount $mount_point
-    done
+    echo "$1"
 }
 
-mount_share() {
-    local -r credentials="$1"
-    local -r share="$2"
-    local -r mount_point="$3"
-    sudo mount -o $(make_mount_options "$credentials") \
-        -t cifs \
-        "$share" "$mount_point"
-    if [[ $? -ne 0 ]]; then
-        echoerr "could not mount share: $share at $mount_point using credentials $credentials"
-        exit 1
-    fi
+make_backup() {
+    local -r src=$(append_trailling_slash $(remove_trailling_slashes "$1"))
+    local -r dst=$(remove_trailling_slashes "$2")
+
+    rsync $(backup_options) "$src" "$dst"
 }
 
-cleanup() {
-    local -r mount_point="$1"
-    unmount_share $mount_point
-    clean_mount_point $mount_point
-}
+restore_backup() {
+    local -r latest=$(append_trailling_slash $(remove_trailling_slashes "$1"))
+    local -r destination=$(remove_trailling_slashes "$2")
 
-backup() {
-    local -r src="$1"
-    local -r dst="${2%/}"
-    rsync $(make_backup_options) $src $dst
-}
-
-main() {
-    local -r mount_point=$(make_mounting_point)
-    mount_share "$CREDENTIALS" "$SMB_SHARE" "$mount_point"
-
-    trap "cleanup $mount_point; exit 0" 1 2 3 6
-
-    backup "$SRC" "$mount_point/$DST"
-
-    cleanup $mount_point
+    rsync $(restore_options) "$latest" "$destination"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
+    TARGET="${TARGET%/}"
+    BACKUPS="${BACKUPS%/}"
+
+    backup_path="$BACKUPS/$(basename $TARGET)"
+    if [[ $# -eq 0 ]]; then
+        make_backup "$TARGET" "$backup_path"
+        exit 0
+    fi
+
+    should_restore="$1"; shift;
+    if [[ $should_restore == --restore ]]; then
+        restore_backup $backup_path/ $TARGET.$RESTORED
+        exit 0
+    fi
+    usage
+    exit 1
 fi
