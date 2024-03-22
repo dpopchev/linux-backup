@@ -1,6 +1,6 @@
 # linux-snapshot
 
-Backup recipes for per target.
+Recipes for backup/snapshots.
 
 ## Installation
 
@@ -10,11 +10,31 @@ Backup recipes for per target.
 
 ### Install
 
-Make a copy and replace variables.
+Make a local copy. Change script variables either by edit or while invoking.
 
 ## Usage
 
+### snapshot
+
+Library to make snapshot backups using hard links of unchanged files.
+Public API is consisted of `make_snapshot`, `restore_latest` and plain CLI.
+
+`make_snapshot` takes a target and destination to create a differentiated snapshot
+with same files 'copied' as hard links. It will delete missing files (only from
+the most recent copy) and skip files who are newer on the destination. A symbolic
+link is created at the destination pointing to the most recent backup.
+
+`restore_latest` takes as first argument the snapshot home and the original
+target as second. It will copy the content of the latest snapshot, pointed by
+`$LATEST` into the original place appending the `$RESTORED` value.
+
+Invoking from CLI without arguments makes a snapshot backup of `$TARGET` into
+`$SNAPSHOTS` while updating the `$LATEST` symbolic link. Pass `--restore` option
+to reverse the process.
+
 ### Setup
+
+
 
 #### User wide available
 
