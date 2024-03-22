@@ -12,7 +12,7 @@ Usage: $(basename $0) [--restore]
 
 Invoke without arguments to backup by updating a snpshot tree.
 
-To restore latest snapshot invoke with --should_restore flag.
+To restore latest snapshot invoke with --restore flag.
 
 Update target: $TARGET
 Destination:   $SNAPSHOTS
