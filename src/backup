@@ -11,7 +11,7 @@ usage() {
     cat << HELPMSG
 Usage: $(basename $0) [--restore]
 
-Invoke without arguments to backup by updating a snpshot tree.
+Invoke without arguments to backup.
 
 To restore backup invoke with --restore flag.
 
