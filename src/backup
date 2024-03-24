@@ -5,7 +5,7 @@ TARGET=${TARGET:=/backup/target/path}
 BACKUPS=${BACKUPS:=/snapshot/destination/path}
 RESTORED="RESTORED_BACKUP"
 LOGFILE=${XDG_RUNTIME_DIR:=${HOME}}/backup.log
-RUNTIME_DIR=${XDG_RUNTIME_DIR:=${HOME}}
+PARTIAL_DIR=".backup_partial"
 
 usage() {
     cat << HELPMSG
@@ -26,7 +26,7 @@ backup_options() {
     options+=("--update")
     options+=("--delete")
     options+=("--partial")
-    options+=("--partial-dir=$RUNTIME_DIR/backup-partial")
+    options+=("--partial-dir=$PARTIAL_DIR")
     options+=("--info=progress2" "-v")
     options+=("--xattrs")
     options+=("--acls")
@@ -43,7 +43,7 @@ restore_options() {
     local -a options
     options+=("--archive")
     options+=("--partial")
-    options+=("--partial-dir=$RUNTIME_DIR/restore-partial")
+    options+=("--partial-dir=$PARTIAL_DIR")
     options+=("--info=progress2" "-v")
     options+=("--xattrs")
     options+=("--acls")
