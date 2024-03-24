@@ -65,14 +65,14 @@ restore_options() {
 }
 
 make_backup() {
-    local -r src=$(remove_trailling_slashes "$1")
+    local -r src=$(append_trailling_slash $(remove_trailling_slashes "$1"))
     local -r dst=$(remove_trailling_slashes "$2")
 
     rsync $(backup_options) "$src" "$dst"
 }
 
 restore_backup() {
-    local -r latest=$(remove_trailling_slashes "$1")
+    local -r latest=$(append_trailling_slash $(remove_trailling_slashes "$1"))
     local -r destination=$(remove_trailling_slashes "$2")
 
     rsync $(restore_options) "$latest" "$destination"
