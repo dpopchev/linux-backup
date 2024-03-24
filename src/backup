@@ -42,16 +42,12 @@ backup_options() {
     options+=("--archive")
     options+=("--update")
     options+=("--delete")
-    options+=("--partial")
-    options+=("--partial-dir=$PARTIAL_DIR")
-    options+=("--info=progress2" "-v")
-    options+=("--xattrs")
-    options+=("--acls")
-    options+=("--human-readable")
-    options+=("--stats")
     options+=("--checksum")
+    options+=("--xattrs" "--acls")
+    options+=("--partial" "--partial-dir=$PARTIAL_DIR")
+    options+=("--info=progress2" "-v")
+    options+=("--stats" "--human-readable" "--log-file=$LOGFILE")
     options+=("--mkpath")
-    options+=("--log-file=$LOGFILE")
 
     local IFS=\ ; echo "${options[*]}"
 }
@@ -59,28 +55,24 @@ backup_options() {
 restore_options() {
     local -a options
     options+=("--archive")
-    options+=("--partial")
-    options+=("--partial-dir=$PARTIAL_DIR")
+    options+=("--partial" "--partial-dir=$PARTIAL_DIR")
     options+=("--info=progress2" "-v")
-    options+=("--xattrs")
-    options+=("--acls")
-    options+=("--human-readable")
-    options+=("--stats")
+    options+=("--xattrs" "--acls")
+    options+=("--stats" "--human-readable" "--log-file=$LOGFILE")
     options+=("--mkpath")
-    options+=("--log-file=$LOGFILE")
 
     local IFS=\ ; echo "${options[*]}"
 }
 
 make_backup() {
-    local -r src=$(append_trailling_slash $(remove_trailling_slashes "$1"))
+    local -r src=$(remove_trailling_slashes "$1")
     local -r dst=$(remove_trailling_slashes "$2")
 
     rsync $(backup_options) "$src" "$dst"
 }
 
 restore_backup() {
-    local -r latest=$(append_trailling_slash $(remove_trailling_slashes "$1"))
+    local -r latest=$(remove_trailling_slashes "$1")
     local -r destination=$(remove_trailling_slashes "$2")
 
     rsync $(restore_options) "$latest" "$destination"
