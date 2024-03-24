@@ -3,8 +3,10 @@ set -euo pipefail
 
 TARGET=${TARGET:=/backup/target/path}
 SNAPSHOTS=${SNAPSHOTS:=/snapshot/destination/path}
-LATEST="latest"
 RESTORED="RESTORED_SNAPSHOT"
+LOGFILE=${XDG_RUNTIME_DIR:=${HOME}}/snapshot.log
+PARTIAL_DIR=".snapshot_partial"
+LATEST="latest"
 
 usage() {
     cat << HELPMSG
@@ -19,42 +21,6 @@ Destination:   $SNAPSHOTS
 HELPMSG
 }
 
-snapshot_options() {
-    local -a options
-    options+=("--archive")
-    options+=("--update")
-    options+=("--delete")
-    # note -P same as --partial --progress
-    options+=("-P")
-    options+=("--partial-dir=.rsync-partial")
-    options+=("--xattrs")
-    options+=("--acls")
-    options+=("--human-readable")
-    options+=("--progress")
-    options+=("--stats")
-    options+=("--checksum")
-    options+=("--link-dest=../$LATEST")
-    options+=("--mkpath")
-
-    local IFS=\ ; echo "${options[*]}"
-}
-
-restore_options() {
-    local -a options
-    options+=("--archive")
-    options+=("-P")
-    options+=("--partial-dir=.rsync-partial")
-    options+=("--xattrs")
-    options+=("--acls")
-    options+=("--human-readable")
-    options+=("--progress")
-    options+=("--stats")
-    options+=("--copy-links")
-    options+=("--mkpath")
-
-    local IFS=\ ; echo "${options[*]}"
-}
-
 remove_trailling_slashes() {
     local r="$1"
     case "$r" in
@@ -64,16 +30,45 @@ remove_trailling_slashes() {
     echo $r
 }
 
-make_snapshot_name() {
-    LC_TIME=C.UTF-8 date +%V-%a-%M
-}
-
 append_trailling_slash() {
     if [[ -d "$1" ]]; then
         echo "$1/"
         return
     fi
     echo "$1"
+}
+
+make_snapshot_name() {
+    LC_TIME=C.UTF-8 date +%V-%a-%M
+}
+
+snapshot_options() {
+    local -a options
+    options+=("--archive")
+    options+=("--update")
+    options+=("--delete")
+    options+=("--checksum")
+    options+=("--xattrs" "--acls")
+    options+=("--partial" "--partial-dir=$PARTIAL_DIR")
+    options+=("--info=progress2" "-v")
+    options+=("--stats" "--human-readable" "--log-file=$LOGFILE")
+    options+=("--mkpath")
+    options+=("--link-dest=../$LATEST")
+
+    local IFS=\ ; echo "${options[*]}"
+}
+
+restore_options() {
+    local -a options
+    options+=("--archive")
+    options+=("--partial" "--partial-dir=$PARTIAL_DIR")
+    options+=("--info=progress2" "-v")
+    options+=("--xattrs" "--acls")
+    options+=("--stats" "--human-readable" "--log-file=$LOGFILE")
+    options+=("--copy-links")
+    options+=("--mkpath")
+
+    local IFS=\ ; echo "${options[*]}"
 }
 
 make_snapshot() {
