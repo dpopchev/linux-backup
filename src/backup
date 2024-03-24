@@ -4,6 +4,7 @@ set -euo pipefail
 TARGET=${TARGET:=/backup/target/path}
 BACKUPS=${BACKUPS:=/snapshot/destination/path}
 RESTORED="RESTORED_BACKUP"
+LOGFILE=${XDG_RUNTIME_DIR:=${HOME}}/backup.log
 RUNTIME_DIR=${XDG_RUNTIME_DIR:=${HOME}}
 
 usage() {
@@ -33,7 +34,7 @@ backup_options() {
     options+=("--stats")
     options+=("--checksum")
     options+=("--mkpath")
-    options+=("--log-file=$RUNTIME_DIR/backup.log")
+    options+=("--log-file=$LOGFILE")
 
     local IFS=\ ; echo "${options[*]}"
 }
@@ -49,7 +50,7 @@ restore_options() {
     options+=("--human-readable")
     options+=("--stats")
     options+=("--mkpath")
-    options+=("--log-file=$RUNTIME_DIR/backup-restore.log")
+    options+=("--log-file=$LOGFILE")
 
     local IFS=\ ; echo "${options[*]}"
 }
