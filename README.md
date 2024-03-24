@@ -57,7 +57,10 @@ make add the following line into `/etc/fstab`
 //smbserver/share   /mnt/smbserver/share cifs    x-systemd.automount,x-systemd.idle-timeout=5min,x-systemd.device-timeout=10s,x-gvfs-hide,_netdev,nofail,noauto,iocharset=utf8,uid=<UID>,gid=<GID>,credentials=/path/smbcredentials 0 0
 ```
 
-Where `<UID>` and `<GID>` are obtained by `id -u` and `id -g`. The credential file
+NOTE: do not alter the `x-systemd` options order, idle-timeout might stop taking
+effect.
+
+`<UID>` and `<GID>` are obtained by `id -u` and `id -g`. The credential file
 should be structured:
 
 ```
