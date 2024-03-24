@@ -20,6 +20,23 @@ Destination:   $BACKUPS
 HELPMSG
 }
 
+remove_trailling_slashes() {
+    local r="$1"
+    case "$r" in
+        /) r="/" ;;
+        */) r="${r%/}" ;;
+    esac
+    echo $r
+}
+
+append_trailling_slash() {
+    if [[ -d "$1" ]]; then
+        echo "$1/"
+        return
+    fi
+    echo "$1"
+}
+
 backup_options() {
     local -a options
     options+=("--archive")
@@ -53,23 +70,6 @@ restore_options() {
     options+=("--log-file=$LOGFILE")
 
     local IFS=\ ; echo "${options[*]}"
-}
-
-remove_trailling_slashes() {
-    local r="$1"
-    case "$r" in
-        /) r="/" ;;
-        */) r="${r%/}" ;;
-    esac
-    echo $r
-}
-
-append_trailling_slash() {
-    if [[ -d "$1" ]]; then
-        echo "$1/"
-        return
-    fi
-    echo "$1"
 }
 
 make_backup() {
