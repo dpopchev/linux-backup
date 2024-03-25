@@ -42,7 +42,14 @@ backup_options() {
     options+=("--archive")
     options+=("--update")
     options+=("--delete")
-    options+=("--checksum")
+    # NOTE: commenting out checksum because causes too much overhead
+    # NOTE: good opportunity for exploration is the form
+    # NOTE: rsync -an --info=name src dest | rsync -a --checksum --files-form src des
+    # NOTE: with obvious caveats of using the command not as intended,
+    # NOTE: i.e. rsync output is not intended to be its input;
+    # NOTE: files with spaces (fixable as input with -from0, but not obvious first command formatting);
+    # NOTE: it wont flag deleted files
+    # options+=("--checksum")
     options+=("--xattrs" "--acls")
     options+=("--partial" "--partial-dir=$PARTIAL_DIR")
     options+=("--info=progress2" "-v")
