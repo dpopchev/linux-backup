@@ -55,7 +55,7 @@ make add the following line into `/etc/fstab`
 ```
 # /etc/fstab
 ...
-//smbserver/share   /mnt/smbserver/share    cifs    x-systemd.automount,x-systemd.device-timeout=5s,x-systemd.mount-timeout=10s,x-systemd.idle-timeout=30min,x-gvfs-hide,_netdev,nofail,noauto,iocharset=utf8,uid=1000,gid=1000,credentials=/path/smbcredentials 0 0
+//smbserver/share   /mnt/smbserver/share    cifs    x-systemd.automount,x-systemd.device-timeout=5s,x-systemd.mount-timeout=10s,x-systemd.idle-timeout=30min,x-gvfs-hide,_netdev,nofail,noauto,iocharset=utf8,uid=<UID>,gid=<GID>,credentials=/path/smbcredentials 0 0
 ...
 ```
 
@@ -71,17 +71,18 @@ domain=
 
 Ensure that the credentials are secure, e.g. `chmod 0600 /path/smbcredentials`.
 
-On changes in `fstab` make sure to run:
+On changes in `fstab` make sure to run per entry, e.g. `/mnt/smbserver/share`:
 
 ```
 systemctl daemon-reload
 systemctl restart mnt-smbserver-share.automount
+systemctl restart mnt-smbserver-share.mount
 ```
 
-Confirm idle timeout `systemctl status mnt-smbserver-share.mount` and track
-status `systemctl status mnt-smbserver-share.mount`, where you should see
-mounting on request, e.g. `ls /mnt/smbserver/share`, and unmounting after `x-systemd.idle-timeout`
-of non-business.
+Again per share track the status using the `status` subcommand, e.g.
+`systemctl status mnt-smbserver-share.mount` after invoking `ls
+/mnt/smbserver/share`. If `idle-timeout` is set it should log unmounting after
+the set time interval of inactivity.
 
 ## Acknowledgment
 
